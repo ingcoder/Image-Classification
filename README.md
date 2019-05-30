@@ -5,7 +5,7 @@
 ## Code
 
 
-### Load Libraries
+### Load libraries
 
     import torch
     from torchvision import datasets, transforms, models
@@ -18,7 +18,7 @@
     from collections import OrderedDict
     #import train 
 
-### Load comman Line Arguments
+### Load command line arguments
     #Load predict command line args
     arg = args.get_input_args_predict()
     image_path = arg.image_path
@@ -115,71 +115,74 @@
 #imshow(image)  
 #Load Checkpoint
 
+### Load checkpoint
+    def load_checkpoint(filepath):
+        pretrained_models = {'resnet18': models.resnet18(pretrained=True),
+                             'alexnet': models.alexnet(pretrained=True),
+                             'squeezenet': models.squeezenet1_0(pretrained=True),
+                             'vgg16': models.vgg16(pretrained=True),
+                             'densenet': models.densenet121(pretrained=True),
+                             'inception': models.inception_v3(pretrained=True)}
 
-def load_checkpoint(filepath):
-    pretrained_models = {'resnet18': models.resnet18(pretrained=True),
-                         'alexnet': models.alexnet(pretrained=True),
-                         'squeezenet': models.squeezenet1_0(pretrained=True),
-                         'vgg16': models.vgg16(pretrained=True),
-                         'densenet': models.densenet121(pretrained=True),
-                         'inception': models.inception_v3(pretrained=True)}
-    
-    checkpoint = torch.load(filepath)
-    #model = pretrained_models[arch]
-    input_size = checkpoint['input_size']
-    output_size = checkpoint['output_size']
-    hidden_units = 512 #checkpoint['hidden_units']
-    drpout = 0.2
-    pretrained_model = pretrained_models[checkpoint['pretrained_model']]
-    #print('Pretrained model', pretrained_model)
-    
-    model = build_network(input_size, hidden_units, pretrained_model, output_size, drpout)
-    #model.classifier = checkpoint['classifier']
-    model.load_state_dict(checkpoint['state_dict'])
-    #print("Trained model")
-    #print('Trained model',model)
-    return model
+        checkpoint = torch.load(filepath)
+        #model = pretrained_models[arch]
+        input_size = checkpoint['input_size']
+        output_size = checkpoint['output_size']
+        hidden_units = 512 #checkpoint['hidden_units']
+        drpout = 0.2
+        pretrained_model = pretrained_models[checkpoint['pretrained_model']]
+        #print('Pretrained model', pretrained_model)
 
-#Predict 5 top classes and probabilities of image
-def predict_image(image_path, model,  checkpoint, topk = 5):    
-    model.to(gpu) #model moved to cpu by default
-    model.eval()
-    
-    #Process PIL image and turn into tensor
-    image = process_image(image_path)
-    dim_up = None
-    
-    if gpu == 'cpu':
-        dim_up = torch.tensor(np.array([image])).to(torch.float)
-        #image = np.array([image])
-        #dim_up = torch.cuda.FloatTensor(image)
-    elif gpu == 'cuda':
-        image = np.array([image])
-        dim_up = torch.cuda.FloatTensor(image)
-    
-    with torch.no_grad():
-        output = model.forward(dim_up)
-    ps = torch.exp(output)
-    
-    #x.topk(k) returns highest k probabilities and the indices of those probabilities corresponding to  the classes. You need to convert from these indices to the actual class labels using class_to_idx 
-    probs, classes = ps.topk(topk)
-    probs = probs[0].to(gpu)
-    probs = probs.numpy()
-    
-    class_indeces = classes[0].to(gpu)
-    class_indeces = class_indeces.numpy()
-    class_name = np.array([])
-    
-    checkpoint = torch.load(checkpoint)
-    for key, items in checkpoint['class_to_idx'].items():
-        #print('Class to index pair:', key, items)
-        if items in class_indeces:        
-            class_name = np.append(class_name, cat_to_name[key])
-    
-    return probs, classes, class_name
+        model = build_network(input_size, hidden_units, pretrained_model, output_size, drpout)
+        #model.classifier = checkpoint['classifier']
+        model.load_state_dict(checkpoint['state_dict'])
+        #print("Trained model")
+        #print('Trained model',model)
+        return model
 
+### Predict five top classes and their probabilties of the test image
+    #Predict 5 top classes and probabilities of image
+    def predict_image(image_path, model,  checkpoint, topk = 5):    
+        model.to(gpu) #model moved to cpu by default
+        model.eval()
+
+        #Process PIL image and turn into tensor
+        image = process_image(image_path)
+        dim_up = None
+
+        if gpu == 'cpu':
+            dim_up = torch.tensor(np.array([image])).to(torch.float)
+            #image = np.array([image])
+            #dim_up = torch.cuda.FloatTensor(image)
+        elif gpu == 'cuda':
+            image = np.array([image])
+            dim_up = torch.cuda.FloatTensor(image)
+
+        with torch.no_grad():
+            output = model.forward(dim_up)
+        ps = torch.exp(output)
+
+        #x.topk(k) returns highest k probabilities and the indices of those probabilities corresponding to  the classes. 
+        You need to convert from these indices to the actual class labels using class_to_idx 
+        probs, classes = ps.topk(topk)
+        probs = probs[0].to(gpu)
+        probs = probs.numpy()
+
+        class_indeces = classes[0].to(gpu)
+        class_indeces = class_indeces.numpy()
+        class_name = np.array([])
+
+        checkpoint = torch.load(checkpoint)
+        for key, items in checkpoint['class_to_idx'].items():
+            #print('Class to index pair:', key, items)
+            if items in class_indeces:        
+                class_name = np.append(class_name, cat_to_name[key])
+
+        return probs, classes, class_name
+
+
+### Call functions to build model and print out rpredictions
 model = load_checkpoint(checkpoint)
 probs, classes, class_name = predict_image(image_path , model, checkpoint, topk)
-
 for class_name, probs in list(zip(class_name,probs)):
     print('Flower name: {:15s}  Class prob: {:.3f} %'.format(class_name.capitalize(), probs*100))
