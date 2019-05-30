@@ -182,7 +182,7 @@
 
 
 ### Call functions to build model and print out rpredictions
-model = load_checkpoint(checkpoint)
-probs, classes, class_name = predict_image(image_path , model, checkpoint, topk)
-for class_name, probs in list(zip(class_name,probs)):
-    print('Flower name: {:15s}  Class prob: {:.3f} %'.format(class_name.capitalize(), probs*100))
+    model = load_checkpoint(checkpoint)
+    probs, classes, class_name = predict_image(image_path , model, checkpoint, topk)
+    for class_name, probs in list(zip(class_name,probs)):
+        print('Flower name: {:15s}  Class prob: {:.3f} %'.format(class_name.capitalize(), probs*100))
